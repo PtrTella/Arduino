@@ -26,22 +26,25 @@
 
 #define FadeTime 20
 #define SleepTime 10000
-#define BouncingTime 200
+#define PlayTime 10000
 
 Timer fadeTimer(MILLIS);
 Timer sleepTimer(MILLIS);
 Timer patternTimer(MILLIS);
+Timer playTimer(MILLIS);
 
-int T1;
+int T1;     //tempo random prima del pattern
+int F;  //fattore di riduzione tempo
 int currentInc;
 int anInc = 5;
 int state;
-int pens;
+int pens;   //numero di penalità
 int ran;
+int score;
 
 
-int arr[4] = {0};
-bool ris[4] = {0};
+int ledPattern[4] = {0};
+bool playerPattern[4] = {0};
 
 void setup()
 {
@@ -58,33 +61,36 @@ void setup()
   enableInterrupt(But_4, calledInterrupt, RISING);
   
   noInterrupts();  
-  state = 1;
+  state = WAIT;
   pens = 0;
-  interrupts(); 
-
-  
+  score = 0;
+  F = 1;
+  Serial.println("Welcome to the Catch the Led Pattern Game. Press Key T1 to Start");
   fadeTimer.start();
   sleepTimer.start();
+  interrupts();
+}
+
+void setLed(int l1, int l2, int l3, int l4){
+    digitalWrite(Led_1,l1);
+    digitalWrite(Led_2,l2);
+    digitalWrite(Led_3,l3);
+    digitalWrite(Led_4,l4);
 }
 
 void penalty(){
-  // INCREMENTA PENALITA E CONTROLLA QUNATE NE HO
   if(pens < MAX_PENALITY-1){
     Serial.println("PENALTY!!!");
     pens++;
   } else{
-    // STAMPA DEL FINE GIOCO
-    Serial.println("END GAME!!!");
+    Serial.println("Game Over. Final Score: %d" + score);
     pens = 0;
+    score = 0;
     state = WAIT;
-    digitalWrite(Led_1,LOW);
-    digitalWrite(Led_2,LOW);
-    digitalWrite(Led_3,LOW);
-    digitalWrite(Led_4,LOW);
+    setLed(LOW,LOW,LOW,LOW);
     fadeTimer.start();
     sleepTimer.start();
   }
-  
 }
 
 
@@ -108,16 +114,18 @@ void pattern()
 {
   randomSeed(analogRead(A5));
   for(int i=0; i<4;i++){
-    arr[i] = random(2);  
+    ledPattern[i] = random(2);  
   }
-  digitalWrite(Led_1, arr[0]);
-  digitalWrite(Led_2, arr[1]);
-  digitalWrite(Led_3, arr[2]);
-  digitalWrite(Led_4, arr[3]);  
+  setLed(ledPattern[0],ledPattern[1],ledPattern[2],ledPattern[3]);
   patternTimer.start();
-  while(patternTimer.read() <= 20000 && state == PATTERN) {}
-  if(state == PATTERN)
+  while(patternTimer.read() <= PlayTime/F && state == PATTERN) {}
+  if(state == PATTERN){
+    setLed(LOW,LOW,LOW,LOW);
+    Serial.println("Go!");
+    playTimer.start();
     state = PLAY;
+  }
+    
 }
 
 void redFade()
@@ -141,6 +149,7 @@ void calledInterrupt(){
     case WAIT: //waiting
       if(pin == But_1){
         state = PATTERN;
+        T1 = random(5);
         patternTimer.start();
       }     
       break;
@@ -153,34 +162,44 @@ void calledInterrupt(){
          
       switch (pin){
         case But_1:
-          ris[0] = !ris[0];
-          digitalWrite(Led_1, ris[0]);  
+          playerPattern[0] = !playerPattern[0];
+          digitalWrite(Led_1, playerPattern[0]);  
           break;
           
         case But_2:
-          ris[1] = !ris[1];
-          digitalWrite(Led_2, ris[1]);     
+          playerPattern[1] = !playerPattern[1];
+          digitalWrite(Led_2, playerPattern[1]);     
 
         case But_3:
-          ris[2] = !ris[2];
-          digitalWrite(Led_3, ris[2]); 
+          playerPattern[2] = !playerPattern[2];
+          digitalWrite(Led_3, playerPattern[2]); 
           break;
 
         case But_4:
-          ris[3] = !ris[3];    
-          digitalWrite(Led_4, ris[3]);      
+          playerPattern[3] = !playerPattern[3];    
+          digitalWrite(Led_4, playerPattern[3]);      
           break;
         }
       break;    
     }
 }
 
-void goPlay(){
-  noInterrupts();
-  state = PLAY;
-  interrupts();
-
-  //LED SPENTI TUTTI
+void checkPattern(){
+  bool check = true;
+  for(int i=0; i<4; i++){
+    if(ledPattern[i] != playerPattern[i]){
+      check = false;
+      break;
+    }
+  }
+  state = PATTERN;
+  if(check){
+    score++;
+    Serial.println("New point! Score: &d" + score);
+  }else{
+    penalty();
+  }
+  patternTimer.start();
 }
 
 void loop() {
@@ -192,20 +211,21 @@ void loop() {
         if(sleepTimer.read() >= SleepTime){
           sleep();
           sleepTimer.start();
-          fadeTimer.start();
+          //fadeTimer.start();   non serve perchè quando richiamo fade timer con un tempo maggiore ci pensa la redFade a farlo riniziare
         }
         break;
 
       case PATTERN:    
-        if(patternTimer.read() >= 1000){
+        if(patternTimer.read() >= T1*1000){
           pattern();
         }                                
         break;
 
       case PLAY:
-        
+        if(playTimer.read() >= PlayTime){
+          checkPattern();
+        }
         break; 
       }
-  
 
 }
