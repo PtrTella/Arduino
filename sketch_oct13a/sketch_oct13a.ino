@@ -92,6 +92,7 @@ void penalty(){
     pens = 0;
     score = 0;
     state = WAIT;
+    F = 1;        
     interrupts();
     setLed(LOW,LOW,LOW,LOW);
     fadeTimer.start();
