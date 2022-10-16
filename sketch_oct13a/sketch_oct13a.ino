@@ -177,7 +177,8 @@ void calledInterrupt(){
         case But_2:
           Serial.println("B2 pressd");
           playerPattern[1] = !playerPattern[1];
-          digitalWrite(Led_2, playerPattern[1]);     
+          digitalWrite(Led_2, playerPattern[1]);
+          break;     
 
         case But_3:
           Serial.println("B3 pressd");
