@@ -14,6 +14,7 @@
 #define But_2 10
 #define But_3 8
 #define But_4 6
+
 #define Pot A0
 
 #define SLEEP 0
@@ -26,6 +27,7 @@
 
 #define FadeTime 20
 #define WaitTime 10000
+#define T2 10000
 
 Timer fadeTimer(MILLIS);
 Timer sleepTimer(MILLIS);
@@ -33,14 +35,14 @@ Timer patternTimer(MILLIS);
 Timer playTimer(MILLIS);
 
 int T1;           //tempo random prima del pattern
-int T2;           //tempo di pattern e di gioco
-int F;            //fattore di riduzione tempo
+float F;            //fattore di riduzione tempo
 int currentInc;   //valore analogico RedLed
 int anInc = 5;    //incremento valore analogico
 int state;        //stato del gioco
 int pens;         //numero di penalità
 int ran;          //tempo random prima di accendere il pattern
 int score;        //punteggio
+int currentPot;
 
 
 int ledPattern[4] = {0};
@@ -64,12 +66,13 @@ void setup()
   state = WAIT;
   pens = 0;
   score = 0;
-  T2 = 10000;
   F = 1;
+  currentPot = 0;
+  interrupts();
+
   Serial.println("Welcome to the Catch the Led Pattern Game. Press Key T1 to Start");
   fadeTimer.start();
   sleepTimer.start();
-  interrupts();
 }
 
 void setLed(int l1, int l2, int l3, int l4){
@@ -125,7 +128,9 @@ void pattern()
   }
   setLed(ledPattern[0],ledPattern[1],ledPattern[2],ledPattern[3]);
   patternTimer.start();
-  while(patternTimer.read() <= (T2/F) && state == PATTERN) {}
+  
+  while(patternTimer.read() <= (T2/(1+F*score)) && state == PATTERN) {}
+  
   if(state == PATTERN){
     for(int i=0;i<4;i++){
       playerPattern[i] = 0;     
@@ -133,7 +138,10 @@ void pattern()
     setLed(LOW,LOW,LOW,LOW);
     Serial.println("Go!");
     playTimer.start();
+    
+    noInterrupts();
     state = PLAY;
+    interrupts();
   }
 }
 
@@ -160,7 +168,9 @@ void calledInterrupt(){
         state = PATTERN;
         T1 = random(5);
         patternTimer.start();
-      }     
+      } else if(pin == Pot){
+                
+      }
       break;
 
     case PATTERN: //pattern
@@ -198,6 +208,8 @@ void calledInterrupt(){
 }
 
 void checkPattern(){
+  
+  noInterrupts();
   bool check = true;
   for(int i=0; i<4; i++){
     if(ledPattern[i] != playerPattern[i]){
@@ -206,6 +218,8 @@ void checkPattern(){
     }
   }
   state = PATTERN;
+  interrupts();
+
   if(check){
     score++;
     F++;
@@ -217,12 +231,23 @@ void checkPattern(){
   patternTimer.start();
 }
 
+void potLevel(){
+  int newValue = analogRead(Pot);
+  if(newValue < currentPot-255 || newValue > currentPot+255){
+    currentPot = newValue;  
+    newValue = currentPot/256 + 1;
+    F = newValue/5;
+    //setLed((int)newValue/1, (int)newValue/2, (int)newValue/3, (int)newValue/4);
+  }
+}
+
 void loop() {
   
   switch (state){
 
     case WAIT:
       redFade();
+      potLevel();
       if(sleepTimer.read() >= WaitTime){
         sleep();
         sleepTimer.start();
@@ -237,7 +262,7 @@ void loop() {
       break;
 
     case PLAY:
-      if(playTimer.read() >= (T2/F) ){
+      if(playTimer.read() >= (T2/(1+F*score)) ){     
         checkPattern();
       }
       break;
