@@ -8,6 +8,7 @@
 #define Led_2 11
 #define Led_3 9
 #define Led_4 7
+
 #define Led_R 5 
 
 #define But_1 12
@@ -33,6 +34,7 @@ Timer fadeTimer(MILLIS);
 Timer sleepTimer(MILLIS);
 Timer patternTimer(MILLIS);
 Timer playTimer(MILLIS);
+Timer penaltyTimer(MICROS);
 
 int T1;           //tempo random prima del pattern
 float F;          //fattore di riduzione tempo
@@ -67,12 +69,13 @@ void setup()
   pens = 0;
   score = 0;
   currentPot = 0;
-  F = 1;
+  F = 0,20;
   interrupts();
 
   Serial.println("Welcome to the Catch the Led Pattern Game. Press Key T1 to Start");
   fadeTimer.start();
   sleepTimer.start();
+  //penaltyTimer.start();
 }
 
 void setLed(int l1, int l2, int l3, int l4){
@@ -83,19 +86,21 @@ void setLed(int l1, int l2, int l3, int l4){
 }
 
 void penalty(){
-  if(pens < MAX_PENALITY-1){
+  if(pens < MAX_PENALITY-1){   
+    //digitalWrite(Led_R, HIGH);
     Serial.println("PENALTY!!!");
+    //while(penaltyTimer.read() <= 1000000) {Serial.println(penaltyTimer.read());}
     noInterrupts();
     pens++;
-    interrupts();
+    interrupts();    
+    //digitalWrite(Led_R, LOW);    
   } else{
     Serial.print("Game Over. Final Score: ");
     Serial.println(score);
     noInterrupts();
     pens = 0;
     score = 0;
-    state = WAIT;
-    F = 1;        
+    state = WAIT;     
     interrupts();
     setLed(LOW,LOW,LOW,LOW);
     fadeTimer.start();
@@ -129,7 +134,9 @@ void pattern()
   setLed(ledPattern[0],ledPattern[1],ledPattern[2],ledPattern[3]);
   patternTimer.start();
   
-  while(patternTimer.read() <= (T2/(1+F*score)) && state == PATTERN) {}
+  float Ftime = (float)T2/(1+F*score);
+  Serial.println(Ftime); 
+  while(patternTimer.read() <= Ftime && state == PATTERN) {}
   
   if(state == PATTERN){
     for(int i=0;i<4;i++){
@@ -166,6 +173,7 @@ void calledInterrupt(){
     case WAIT:
       if(pin == But_1){
         state = PATTERN;
+        digitalWrite(Led_R, LOW);
         T1 = random(5);
         patternTimer.start();
       }
@@ -176,27 +184,27 @@ void calledInterrupt(){
       break;
 
     case PLAY:
-         switch (pin){
+      switch (pin){
         case But_1:
-          Serial.println("B1 pressd");
+          //Serial.println("B1 pressd");
           playerPattern[0] = !playerPattern[0];
           digitalWrite(Led_1, playerPattern[0]);  
           break;
           
         case But_2:
-          Serial.println("B2 pressd");
+          //Serial.println("B2 pressd");
           playerPattern[1] = !playerPattern[1];
           digitalWrite(Led_2, playerPattern[1]);
           break;     
 
         case But_3:
-          Serial.println("B3 pressd");
+          //Serial.println("B3 pressd");
           playerPattern[2] = !playerPattern[2];
           digitalWrite(Led_3, playerPattern[2]); 
           break;
 
         case But_4:
-          Serial.println("B4 pressd");
+          //Serial.println("B4 pressd");
           playerPattern[3] = !playerPattern[3];    
           digitalWrite(Led_4, playerPattern[3]);      
           break;
@@ -217,10 +225,10 @@ void checkPattern(){
   }
   state = PATTERN;
   interrupts();
-
+  
+  setLed(LOW,LOW,LOW,LOW);
   if(check){
     score++;
-    F++;
     Serial.print("New point! Score: ");
     Serial.println(score);
   }else{
@@ -233,9 +241,10 @@ void potLevel(){
   int newValue = analogRead(Pot);
   if(newValue < currentPot-255 || newValue > currentPot+255){
     currentPot = newValue;  
-    newValue = currentPot/256 + 1;
-    F = newValue/5;
-    //setLed((int)newValue/1, (int)newValue/2, (int)newValue/3, (int)newValue/4);
+    int val = currentPot/256 + 1;
+    F = (float)val/5;
+    Serial.print("Level: ");
+    Serial.println(val);
   }
 }
 
@@ -249,7 +258,6 @@ void loop() {
       if(sleepTimer.read() >= WaitTime){
         sleep();
         sleepTimer.start();
-        //fadeTimer.start();   non serve perchè quando richiamo fade timer con un tempo maggiore ci pensa la redFade a farlo riniziare
       }
       break;
 
