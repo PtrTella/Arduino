@@ -35,14 +35,14 @@ Timer patternTimer(MILLIS);
 Timer playTimer(MILLIS);
 
 int T1;           //tempo random prima del pattern
-float F;            //fattore di riduzione tempo
+float F;          //fattore di riduzione tempo
 int currentInc;   //valore analogico RedLed
 int anInc = 5;    //incremento valore analogico
 int state;        //stato del gioco
 int pens;         //numero di penalità
 int ran;          //tempo random prima di accendere il pattern
 int score;        //punteggio
-int currentPot;
+int currentPot;   //potenza precedente del potenziometro
 
 
 int ledPattern[4] = {0};
@@ -66,8 +66,8 @@ void setup()
   state = WAIT;
   pens = 0;
   score = 0;
-  F = 1;
   currentPot = 0;
+  F = 1;
   interrupts();
 
   Serial.println("Welcome to the Catch the Led Pattern Game. Press Key T1 to Start");
@@ -106,18 +106,18 @@ void penalty(){
 
 void sleep()
 {
-    digitalWrite(Led_R, LOW);
-    noInterrupts();
-    state = SLEEP;
-    interrupts();
-    set_sleep_mode(SLEEP_MODE_PWR_DOWN);
-    sleep_enable();
-    sleep_mode();
-    /** The program will continue from here. **/
-    sleep_disable();
-    noInterrupts();
-    state = WAIT;
-    interrupts(); 
+  digitalWrite(Led_R, LOW);
+  noInterrupts();
+  state = SLEEP;
+  interrupts();
+  set_sleep_mode(SLEEP_MODE_PWR_DOWN);
+  sleep_enable();
+  sleep_mode();
+  sleep_disable();
+    
+  noInterrupts();
+  state = WAIT;
+  interrupts(); 
 }
 
 void pattern()
@@ -163,17 +163,15 @@ void calledInterrupt(){
   
   switch (state){
     
-    case WAIT: //waiting
+    case WAIT:
       if(pin == But_1){
         state = PATTERN;
         T1 = random(5);
         patternTimer.start();
-      } else if(pin == Pot){
-                
       }
       break;
 
-    case PATTERN: //pattern
+    case PATTERN:
       penalty();
       break;
 
