@@ -1,4 +1,3 @@
-#include <TimerOne.h>
 #include <Timer.h>
 #include <avr/sleep.h>
 #define EI_ARDUINO_INTERRUPTED_PIN
@@ -22,19 +21,17 @@
 #define WAIT 1
 #define PATTERN 2
 #define PLAY 3
-#define END 4
+#define PENALTY 4
+#define END 5
 
 #define MAX_PENALITY 3
 
 #define FadeTime 20
 #define WaitTime 10000
-#define T2 10000
+#define T2 12000
 
 Timer fadeTimer(MILLIS);
-Timer sleepTimer(MILLIS);
-Timer patternTimer(MILLIS);
-Timer playTimer(MILLIS);
-Timer penaltyTimer(MICROS);
+Timer timer(MILLIS);
 
 int T1;           //tempo random prima del pattern
 float F;          //fattore di riduzione tempo
@@ -74,8 +71,7 @@ void setup()
 
   Serial.println("Welcome to the Catch the Led Pattern Game. Press Key T1 to Start");
   fadeTimer.start();
-  sleepTimer.start();
-  //penaltyTimer.start();
+  timer.start();
 }
 
 void setLed(int l1, int l2, int l3, int l4){
@@ -86,26 +82,37 @@ void setLed(int l1, int l2, int l3, int l4){
 }
 
 void penalty(){
-  if(pens < MAX_PENALITY-1){   
-    //digitalWrite(Led_R, HIGH);
-    Serial.println("PENALTY!!!");
-    //while(penaltyTimer.read() <= 1000000) {Serial.println(penaltyTimer.read());}
-    noInterrupts();
-    pens++;
-    interrupts();    
-    //digitalWrite(Led_R, LOW);    
-  } else{
-    Serial.print("Game Over. Final Score: ");
-    Serial.println(score);
-    noInterrupts();
-    pens = 0;
-    score = 0;
-    state = WAIT;     
-    interrupts();
-    setLed(LOW,LOW,LOW,LOW);
-    fadeTimer.start();
-    sleepTimer.start();
+  setLed(LOW,LOW,LOW,LOW);    
+  digitalWrite(Led_R, HIGH);
+  Serial.println("PENALTY!!!");
+  noInterrupts();
+  pens++;
+  interrupts();
+  delay(1000);
+  digitalWrite(Led_R, LOW);  
+  if(pens < MAX_PENALITY){
+    T1 = random(5);
+    state = PATTERN;
+    timer.start(); //start for random time before show pattern
+  }else{
+    timer.stop();
+    state = END;
   }
+}
+
+void endGame(){
+  digitalWrite(Led_R, HIGH);
+  Serial.print("Game Over. Final Score: ");
+  Serial.println(score);
+  delay(10000);
+  digitalWrite(Led_R, LOW);
+  noInterrupts();
+  pens = 0;
+  score = 0;
+  state = WAIT;
+  interrupts();
+  fadeTimer.start();
+  timer.start();  //start for sleep  
 }
 
 
@@ -132,24 +139,23 @@ void pattern()
     ledPattern[i] = random(2);  
   }
   setLed(ledPattern[0],ledPattern[1],ledPattern[2],ledPattern[3]);
-  patternTimer.start();
+  timer.start();  //start to show pattern
   
   float Ftime = (float)T2/(1+F*score);
-  Serial.println(Ftime); 
-  while(patternTimer.read() <= Ftime && state == PATTERN) {}
+  Serial.println(Ftime);
+  while(timer.read() <= Ftime && state == PATTERN) {}
   
+  noInterrupts(); 
   if(state == PATTERN){
     for(int i=0;i<4;i++){
       playerPattern[i] = 0;     
     }
     setLed(LOW,LOW,LOW,LOW);
-    Serial.println("Go!");
-    playTimer.start();
-    
-    noInterrupts();
+    Serial.println("Gioca!");
+    timer.start();   //start for playing
     state = PLAY;
-    interrupts();
   }
+  interrupts();
 }
 
 void redFade()
@@ -172,15 +178,17 @@ void calledInterrupt(){
     
     case WAIT:
       if(pin == But_1){
+        Serial.println("Go!");
         state = PATTERN;
         digitalWrite(Led_R, LOW);
         T1 = random(5);
-        patternTimer.start();
+        fadeTimer.stop();
+        timer.start();  //start for random time before show pattern
       }
       break;
 
     case PATTERN:
-      penalty();
+      state = PENALTY;
       break;
 
     case PLAY:
@@ -215,7 +223,7 @@ void calledInterrupt(){
 
 void checkPattern(){
   
-  noInterrupts();
+  //noInterrupts(); tolti perchè li metti nel loop  
   bool check = true;
   for(int i=0; i<4; i++){
     if(ledPattern[i] != playerPattern[i]){
@@ -224,17 +232,18 @@ void checkPattern(){
     }
   }
   state = PATTERN;
-  interrupts();
+  //interrupts();
   
-  setLed(LOW,LOW,LOW,LOW);
   if(check){
+    setLed(LOW,LOW,LOW,LOW);
+    //noInterrupts();
     score++;
+    //interrupts();
     Serial.print("New point! Score: ");
     Serial.println(score);
   }else{
-    penalty();
+    state = PENALTY;
   }
-  patternTimer.start();
 }
 
 void potLevel(){
@@ -255,24 +264,36 @@ void loop() {
     case WAIT:
       redFade();
       potLevel();
-      if(sleepTimer.read() >= WaitTime){
+      if(timer.read() >= WaitTime){
         sleep();
-        sleepTimer.start();
+        timer.start();
       }
       break;
 
     case PATTERN:    
-      if(patternTimer.read() >= T1*1000){
+      if(timer.read() >= T1*1000){
         pattern();
-      }                                
+      }                       
       break;
 
     case PLAY:
-      if(playTimer.read() >= (T2/(1+F*score)) ){     
+      if(timer.read() >= (T2/(1+F*score)) ){     
+        noInterrupts();
         checkPattern();
+        T1 = random(5);
+        timer.start();  //start for random time before show pattern
+        interrupts();
       }
       break;
-        
+    
+    case PENALTY:
+      penalty();    
+      break;
+    
+    case END:
+      endGame();
+      break;
+
     default:
       break;
   }
