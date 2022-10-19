@@ -66,7 +66,7 @@ void setup(){
   pens = 0;
   score = 0;
   currentPot = 0;
-  F = 0,20;
+  F = 0.20;
   interrupts();
 
   Serial.println("Welcome to the Catch the Led Pattern Game. Press Key T1 to Start");
