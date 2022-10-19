@@ -28,7 +28,7 @@
 
 #define FadeTime 20
 #define WaitTime 10000
-#define T2 12000
+#define T2 6000
 
 Timer fadeTimer(MILLIS);
 Timer timer(MILLIS);
@@ -47,8 +47,8 @@ int currentPot;   //potenza precedente del potenziometro
 int ledPattern[4] = {0};
 bool playerPattern[4] = {0};
 
-void setup()
-{
+void setup(){
+
   Serial.begin(9600);
 
   pinMode(Led_1, OUTPUT);
@@ -75,6 +75,7 @@ void setup()
 }
 
 void setLed(int l1, int l2, int l3, int l4){
+
     digitalWrite(Led_1,l1);
     digitalWrite(Led_2,l2);
     digitalWrite(Led_3,l3);
@@ -82,6 +83,7 @@ void setLed(int l1, int l2, int l3, int l4){
 }
 
 void penalty(){
+
   setLed(LOW,LOW,LOW,LOW);    
   digitalWrite(Led_R, HIGH);
   Serial.println("PENALTY!!!");
@@ -101,6 +103,7 @@ void penalty(){
 }
 
 void endGame(){
+
   digitalWrite(Led_R, HIGH);
   Serial.print("Game Over. Final Score: ");
   Serial.println(score);
@@ -116,8 +119,8 @@ void endGame(){
 }
 
 
-void sleep()
-{
+void sleep(){
+
   digitalWrite(Led_R, LOW);
   noInterrupts();
   state = SLEEP;
@@ -132,8 +135,8 @@ void sleep()
   interrupts(); 
 }
 
-void pattern()
-{
+void pattern(){
+
   randomSeed(analogRead(A5));
   for(int i=0; i<4;i++){
     ledPattern[i] = random(2);  
@@ -142,6 +145,7 @@ void pattern()
   timer.start();  //start to show pattern
   
   float Ftime = (float)T2/(1+F*score);
+  Serial.println(T1);
   Serial.println(Ftime);
   while(timer.read() <= Ftime && state == PATTERN) {}
   
@@ -158,8 +162,8 @@ void pattern()
   interrupts();
 }
 
-void redFade()
-{
+void redFade(){
+
   if(fadeTimer.read() >= FadeTime){
     fadeTimer.start();
     analogWrite(Led_R, currentInc);
@@ -247,6 +251,7 @@ void checkPattern(){
 }
 
 void potLevel(){
+
   int newValue = analogRead(Pot);
   if(newValue < currentPot-255 || newValue > currentPot+255){
     currentPot = newValue;  
@@ -254,6 +259,7 @@ void potLevel(){
     F = (float)val/5;
     Serial.print("Level: ");
     Serial.println(val);
+    Serial.println(F);
   }
 }
 
