@@ -28,7 +28,7 @@
 
 #define FadeTime 20
 #define WaitTime 10000
-#define T2 6000
+#define T2 6000   // Tempo di visibilità del pattern e tempo di gioco, poi scalato con un fattore F
 
 Timer fadeTimer(MILLIS);
 Timer timer(MILLIS);
@@ -95,7 +95,7 @@ void penalty(){
   if(pens < MAX_PENALITY){
     T1 = random(5);
     state = PATTERN;
-    timer.start(); //start for random time before show pattern
+    timer.start();                                //start for random time before show pattern
   }else{
     timer.stop();
     state = END;
@@ -115,7 +115,7 @@ void endGame(){
   state = WAIT;
   interrupts();
   fadeTimer.start();
-  timer.start();  //start for sleep  
+  timer.start();                                      //start for sleep  
 }
 
 
@@ -142,11 +142,9 @@ void pattern(){
     ledPattern[i] = random(2);  
   }
   setLed(ledPattern[0],ledPattern[1],ledPattern[2],ledPattern[3]);
-  timer.start();  //start to show pattern
+  timer.start();                                  //start to show pattern
   
   float Ftime = (float)T2/(1+F*score);
-  Serial.println(T1);
-  Serial.println(Ftime);
   while(timer.read() <= Ftime && state == PATTERN) {}
   
   noInterrupts(); 
@@ -156,7 +154,7 @@ void pattern(){
     }
     setLed(LOW,LOW,LOW,LOW);
     Serial.println("Gioca!");
-    timer.start();   //start for playing
+    timer.start();                              //start for playing
     state = PLAY;
   }
   interrupts();
@@ -187,7 +185,7 @@ void calledInterrupt(){
         digitalWrite(Led_R, LOW);
         T1 = random(5);
         fadeTimer.stop();
-        timer.start();  //start for random time before show pattern
+        timer.start();                      //start for random time before show pattern
       }
       break;
 
@@ -198,25 +196,21 @@ void calledInterrupt(){
     case PLAY:
       switch (pin){
         case But_1:
-          //Serial.println("B1 pressd");
           playerPattern[0] = !playerPattern[0];
           digitalWrite(Led_1, playerPattern[0]);  
           break;
           
         case But_2:
-          //Serial.println("B2 pressd");
           playerPattern[1] = !playerPattern[1];
           digitalWrite(Led_2, playerPattern[1]);
           break;     
 
         case But_3:
-          //Serial.println("B3 pressd");
           playerPattern[2] = !playerPattern[2];
           digitalWrite(Led_3, playerPattern[2]); 
           break;
 
         case But_4:
-          //Serial.println("B4 pressd");
           playerPattern[3] = !playerPattern[3];    
           digitalWrite(Led_4, playerPattern[3]);      
           break;
@@ -227,7 +221,6 @@ void calledInterrupt(){
 
 void checkPattern(){
   
-  //noInterrupts(); tolti perchè li metti nel loop  
   bool check = true;
   for(int i=0; i<4; i++){
     if(ledPattern[i] != playerPattern[i]){
@@ -236,13 +229,10 @@ void checkPattern(){
     }
   }
   state = PATTERN;
-  //interrupts();
   
   if(check){
     setLed(LOW,LOW,LOW,LOW);
-    //noInterrupts();
     score++;
-    //interrupts();
     Serial.print("New point! Score: ");
     Serial.println(score);
   }else{
@@ -259,7 +249,6 @@ void potLevel(){
     F = (float)val/5;
     Serial.print("Level: ");
     Serial.println(val);
-    Serial.println(F);
   }
 }
 
@@ -287,7 +276,7 @@ void loop() {
         noInterrupts();
         checkPattern();
         T1 = random(5);
-        timer.start();  //start for random time before show pattern
+        timer.start();                            //start for random time before show pattern
         interrupts();
       }
       break;
