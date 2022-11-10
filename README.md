@@ -4,8 +4,10 @@
 
 Simple game button.
 
-Scherma:
+Schema:
+
 ![Alt text](ButtonGame/doc/Schema.png?raw=true "Schema")
+
 
 
 Video:
